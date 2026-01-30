@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: kidsafe-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/kidsafe
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-your-encryption-key-32-chars-long}
+      - FCM_SERVER_KEY=${FCM_SERVER_KEY:-}
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - kidsafe-network
+
+  mongo:
+    image: mongo:6-jammy
+    container_name: kidsafe-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - kidsafe-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: kidsafe-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - kidsafe-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: kidsafe-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - kidsafe-network
+
+volumes:
+  mongo-data:
+  redis-data:
+
+networks:
+  kidsafe-network:
+    driver: bridge
